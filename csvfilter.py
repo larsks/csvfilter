@@ -52,17 +52,23 @@ class CSVFilter(object):
         selected = set()
 
         for spec, filter in self._colspec:
+            unselected = [i for i in range(len(row))
+                          if not i in selected]
+
             if isinstance(spec, slice):
                 value = row[spec]
                 selected.update(range(spec.start, spec.stop))
+            elif isinstance(spec, jinja2.Template):
+                value = [spec.render(row=row,
+                                     unselected=unselected,
+                                     **rowdict)]
             elif isinstance(spec, int):
                 value = [row[spec]]
                 selected.add(spec)
             elif spec == '*':
                 value = row
             elif spec == '%':
-                value = [row[i] for i, val in enumerate(row)
-                         if i not in selected]
+                value = [row[i] for i in unselected]
             else:
                 raise ValueError(spec)
 
@@ -81,6 +87,12 @@ class CSVFilter(object):
         bufreader = csv.reader(buf)
 
         for spec in bufreader.next():
+            if spec.startswith('@'):
+                t = spec[1:]
+                t = self.env.from_string(spec[1:])
+                _colspec.append((t, None))
+                continue
+
             if '|' in spec:
                 spec, filter = spec.split('|', 1)
                 filter = self.env.compile_expression('value|%s' % filter)
