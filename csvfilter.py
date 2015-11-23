@@ -29,6 +29,9 @@ class CSVFilter(object):
 
         self.parse_colspec()
 
+        if self.use_headers:
+            outcsv.writerow(self.pick(0, self.header_list))
+
         for rownum, row in enumerate(incsv):
             # just skip empty lines
             if not row:
@@ -45,23 +48,20 @@ class CSVFilter(object):
         else:
             rowdict = {}
 
-        rowdict.update({
-            '_csv_rownum': rownum,
-            '_csv_columns': len(row),
-        })
+        selected = set()
 
         for spec in self._colspec:
             if isinstance(spec, slice):
                 _row.extend(row[spec])
+                selected.update(range(spec.start, spec.stop))
             elif isinstance(spec, int):
                 _row.append(row[spec])
-            elif isinstance(spec, jinja2.environment.TemplateExpression):
-                _row.append(spec(row=row,
-                                 **rowdict))
+                selected.add(spec)
             elif spec == '*':
                 _row.extend(row)
-            elif isinstance(spec, basestring) and spec.startswith('_csv'):
-                _row.append(rowdict[spec])
+            elif spec == '%':
+                _row.extend([row[i] for i,val in enumerate(row)
+                             if not i in selected])
             else:
                 raise ValueError(spec)
 
@@ -74,24 +74,20 @@ class CSVFilter(object):
         bufreader = csv.reader(buf)
 
         for spec in bufreader.next():
-            if '|' in spec or '[' in spec:
-                _colspec.append(self.env.compile_expression(spec))
-            elif '-' in spec and not spec.startswith('-'):
+            if '-' in spec and not spec.startswith('-'):
                 start, stop = spec.split('-')
-                if start.isdigit():
+                try:
                     start = int(start)
-                else:
+                except ValueError:
                     start = self.headers[start]
 
-                if stop.isdigit():
+                try:
                     stop = int(stop)
-                else:
+                except ValueError:
                     stop = self.headers[stop]
 
                 _colspec.append(slice(start, stop+1))
-            elif spec.startswith('_csv'):
-                _colspec.append(spec)
-            elif spec == '*':
+            elif spec in ['*', '%']:
                 _colspec.append(spec)
             else:
                 try:
