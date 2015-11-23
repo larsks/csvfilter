@@ -101,6 +101,7 @@ class CSVFilter(object):
 
         self._colspec = _colspec
 
+
 def parse_args():
     p = argparse.ArgumentParser()
 
@@ -108,6 +109,8 @@ def parse_args():
                    default=',')
     p.add_argument('--ofs', '-F',
                    default=',')
+    p.add_argument('--use-headers', '-H',
+                   action='store_true')
 
     p.add_argument('colspec')
     p.add_argument('infile', nargs='?')
@@ -124,7 +127,8 @@ def main():
     
         incsv = csv.reader(infd, delimiter=args.ifs)
         outcsv = csv.writer(outfd, delimiter=args.ofs, encoding='utf-8')
-        filter = CSVFilter(args.colspec)
+        filter = CSVFilter(args.colspec,
+                           use_headers=args.use_headers)
         filter.filter(incsv, outcsv)
 
 if __name__ == '__main__':
