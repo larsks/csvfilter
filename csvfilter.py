@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
+import argparse
 import jinja2
 import re
+import sys
+import unicodecsv as csv
+
 from cStringIO import StringIO
 
 
@@ -54,7 +58,7 @@ class CSVFilter(object):
             elif isinstance(spec, jinja2.environment.TemplateExpression):
                 _row.append(spec(row=row,
                                  **rowdict))
-            elif isinstance(spec, str) and spec.startswith('_csv'):
+            elif isinstance(spec, basestring) and spec.startswith('_csv'):
                 _row.append(rowdict[spec])
             else:
                 raise ValueError(spec)
@@ -82,7 +86,7 @@ class CSVFilter(object):
                 else:
                     stop = self.headers[stop]
 
-                _colspec.append(slice(start, stop))
+                _colspec.append(slice(start, stop+1))
             elif spec.startswith('_csv'):
                 _colspec.append(spec)
             else:
@@ -93,12 +97,32 @@ class CSVFilter(object):
 
         self._colspec = _colspec
 
-if __name__ == '__main__':
-    import sys
-    import unicodecsv as csv
+def parse_args():
+    p = argparse.ArgumentParser()
 
-    with open(sys.argv[1]) as fd:
-        incsv = csv.reader(fd)
-        outcsv = csv.writer(sys.stdout, encoding='utf-8')
-        filter = CSVFilter(sys.argv[2])
+    p.add_argument('--ifs', '-f',
+                   default=',')
+    p.add_argument('--ofs', '-F',
+                   default=',')
+
+    p.add_argument('colspec')
+    p.add_argument('infile', nargs='?')
+    p.add_argument('outfile', nargs='?')
+
+    return p.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    with open(args.infile) if args.infile else sys.stdin as infd, \
+            open(args.outfile, 'w') if args.outfile else sys.stdout as outfd:
+    
+        incsv = csv.reader(infd, delimiter=args.ifs)
+        outcsv = csv.writer(outfd, delimiter=args.ofs, encoding='utf-8')
+        filter = CSVFilter(args.colspec)
         filter.filter(incsv, outcsv)
+
+if __name__ == '__main__':
+    main()
+
