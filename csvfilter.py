@@ -58,6 +58,8 @@ class CSVFilter(object):
             elif isinstance(spec, jinja2.environment.TemplateExpression):
                 _row.append(spec(row=row,
                                  **rowdict))
+            elif spec == '*':
+                _row.extend(row)
             elif isinstance(spec, basestring) and spec.startswith('_csv'):
                 _row.append(rowdict[spec])
             else:
@@ -88,6 +90,8 @@ class CSVFilter(object):
 
                 _colspec.append(slice(start, stop+1))
             elif spec.startswith('_csv'):
+                _colspec.append(spec)
+            elif spec == '*':
                 _colspec.append(spec)
             else:
                 try:
