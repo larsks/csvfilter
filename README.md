@@ -1,31 +1,85 @@
-A tool for filtering data from CSV files.
+A tool for selecting columns from a CSV file.
+
+## Why not awk?
+
+Because awk doesn't handle things like quoted strings that contain
+your field separator, or fields that contain embedded newlines, etc.
+Consider the following simple input:
+
+    id,name,description
+    1,widget,"This is a really
+    awesome widget"
+    2,gadget,"If you have a widget,
+    then you need a gadget"
+
+With `csvfilter`, extracting the description is easy:
+
+    $ csvfilter -H description < sample.csv
+    description
+    "This is a really
+    awesome widget"
+    "If you have a widget,
+    then you need a gadget"
+
+## Column selection
+
+- `*` -- all columns
+- `%` -- all columns that were not selected explicitly by
+  name or number
 
 ## Examples
 
-### Simple selection of numeric columns
+The following examples all assume the following input data:
 
-    csvtool 0:2,5,10-12 input.csv output.csv
+    id,header1,header2,header3,header4,header5
+    row1,col1,col2,col3,col4,col5
+    row2,col1,col2,col3,col4,col5
+    row3,col1,col2,col3,col4,col5
 
-### Simple selection of named columns
+### Simple selection using numeric columns
 
-    csvtool -H id,firstname,lastname input.csv output.csv
+    $ csvfilter 0,1,2 < sample.csv
+    id,header1,header2
+    row1,col1,col2
+    row2,col1,col2
+    row3,col1,col2
 
-### Ranges using named columns
+### Range selection using numeric columns
 
-    csvtool -H id-lastname input.csv output.csv
+    $ csvfilter 0-2 < sample.csv
+    id,header1,header2
+    row1,col1,col2
+    row2,col1,col2
+    row3,col1,col2
+
+### Simple selection using named columns
+
+    $ csvfilter -H id,header2 < sample.csv
+    id,header2
+    row1,col2
+    row2,col2
+    row3,col2
+
+### Range selection using named columns
+
+    $ csvfilter -H header3-header5 < sample.csv
+    header3,header4,header5
+    col3,col4,col5
+    col3,col4,col5
+    col3,col4,col5
 
 ### Mixed named/numeric columns
 
-    csvtool -H 0-2,position input.csv output.csv
+    $ csvfilter -H 0-2,header5 < sample.csv
+    id,header1,header2,header5
+    row1,col1,col2,col5
+    row2,col1,col2,col5
+    row3,col1,col2,col5
 
-### Filtered values with named columns
+### Reordering selected columns with %
 
-    csvtool -H id,firstname|capitalize,lastname|capitalize,widgets|int
-
-### Filtered values with numeric columns
-
-    csvtool 0,row[1]|capitalize,row[2]|capitalize
-
-### Filtered ranges
-
-    NotImplemented
+    $ csvfilter -H header5,header2,%
+    header5,header2,id,header1,header3,header4
+    col5,col2,row1,col1,col3,col4
+    col5,col2,row2,col1,col3,col4
+    col5,col2,row3,col1,col3,col4
