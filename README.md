@@ -78,8 +78,22 @@ The following examples all assume the following input data:
 
 ### Reordering selected columns with %
 
-    $ csvfilter -H header5,header2,%
+    $ csvfilter -H header5,header2,% < sample.csv
     header5,header2,id,header1,header3,header4
     col5,col2,row1,col1,col3,col4
     col5,col2,row2,col1,col3,col4
     col5,col2,row3,col1,col3,col4
+
+### Using filters
+
+You can take advantage of [Jinja2 filters][] to modify column values.
+Filters can be applied to single values, to ranges, or to the
+aggregates `*` and `%`:
+
+[jinja2 filters]: http://jinja.pocoo.org/docs/dev/templates/#list-of-builtin-filters
+
+    $ csvfilter -H 'id|upper,%|title' < sample.csv
+    id,header1,header2,header3,header4,header5
+    ROW1,Col1,Col2,Col3,Col4,Col5
+    ROW2,Col1,Col2,Col3,Col4,Col5
+    ROW3,Col1,Col2,Col3,Col4,Col5
