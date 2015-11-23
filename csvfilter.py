@@ -30,17 +30,18 @@ class CSVFilter(object):
         self.parse_colspec()
 
         if self.use_headers:
-            outcsv.writerow(self.pick(0, self.header_list))
+            outcsv.writerow(
+                self.pick(self.header_list, apply_filters=False))
 
-        for rownum, row in enumerate(incsv):
+        for row in incsv:
             # just skip empty lines
             if not row:
                 continue
 
-            row = self.pick(rownum, row)
+            row = self.pick(row)
             outcsv.writerow(row)
 
-    def pick(self, rownum, row):
+    def pick(self, row, apply_filters=True):
         _row = []
 
         if self.use_headers:
@@ -50,20 +51,26 @@ class CSVFilter(object):
 
         selected = set()
 
-        for spec in self._colspec:
+        for spec, filter in self._colspec:
             if isinstance(spec, slice):
-                _row.extend(row[spec])
+                value = row[spec]
                 selected.update(range(spec.start, spec.stop))
             elif isinstance(spec, int):
-                _row.append(row[spec])
+                value = [row[spec]]
                 selected.add(spec)
             elif spec == '*':
-                _row.extend(row)
+                value = row
             elif spec == '%':
-                _row.extend([row[i] for i,val in enumerate(row)
-                             if not i in selected])
+                value = [row[i] for i, val in enumerate(row)
+                         if i not in selected]
             else:
                 raise ValueError(spec)
+
+            if apply_filters:
+                _row.extend(filter(value=x, **rowdict) if filter else x
+                            for x in value)
+            else:
+                _row.extend(value)
 
         return _row
 
@@ -74,6 +81,12 @@ class CSVFilter(object):
         bufreader = csv.reader(buf)
 
         for spec in bufreader.next():
+            if '|' in spec:
+                spec, filter = spec.split('|', 1)
+                filter = self.env.compile_expression('value|%s' % filter)
+            else:
+                filter = None
+
             if '-' in spec and not spec.startswith('-'):
                 start, stop = spec.split('-')
                 try:
@@ -86,14 +99,14 @@ class CSVFilter(object):
                 except ValueError:
                     stop = self.headers[stop]
 
-                _colspec.append(slice(start, stop+1))
+                _colspec.append((slice(start, stop+1), filter))
             elif spec in ['*', '%']:
-                _colspec.append(spec)
+                _colspec.append((spec, filter))
             else:
                 try:
-                    _colspec.append(int(spec))
+                    _colspec.append((int(spec), filter))
                 except ValueError:
-                    _colspec.append(self.headers[spec])
+                    _colspec.append((self.headers[spec], filter))
 
         self._colspec = _colspec
 
